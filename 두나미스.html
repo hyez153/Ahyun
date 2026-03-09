@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>두나미스</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Gmarket+Sans:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg: #F0F4F8;
+  --white: #FFFFFF;
+  --primary: #1F3864;
+  --primary-light: #2E4057;
+  --accent: #E74C3C;
+  --green: #1E8449;
+  --yellow: #9A7D0A;
+  --red: #922B21;
+  --border: #DDE3EC;
+  --muted: #8896A8;
+  --text: #1A2332;
+  --cat1: #D6E4F0; --cat1-fg: #1A5276;
+  --cat2: #D5F5E3; --cat2-fg: #1E8449;
+  --cat3: #FEF9E7; --cat3-fg: #9A7D0A;
+  --cat4: #FDEDEC; --cat4-fg: #922B21;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--text); font-family:'Noto Sans KR',sans-serif; min-height:100vh; }
+
+/* ── Layout ── */
+.app { display:flex; min-height:100vh; }
+.sidebar {
+  width:260px; min-height:100vh;
+  background:var(--primary);
+  padding:0;
+  flex-shrink:0;
+  display:flex; flex-direction:column;
+}
+.sidebar-logo {
+  padding:28px 24px 20px;
+  border-bottom:1px solid rgba(255,255,255,0.1);
+}
+.sidebar-logo .title {
+  font-family:'Gmarket Sans',sans-serif;
+  font-size:15px; font-weight:700;
+  color:#fff; line-height:1.4;
+}
+.sidebar-logo .sub { font-size:11px; color:rgba(255,255,255,0.5); margin-top:4px; }
+
+.sidebar-nav { padding:16px 0; flex:1; }
+.nav-item {
+  display:flex; align-items:center; gap:10px;
+  padding:12px 24px;
+  cursor:pointer;
+  color:rgba(255,255,255,0.65);
+  font-size:13px; font-weight:500;
+  transition:all 0.2s;
+  border-left:3px solid transparent;
+}
+.nav-item:hover { background:rgba(255,255,255,0.07); color:#fff; }
+.nav-item.active { background:rgba(255,255,255,0.12); color:#fff; border-left-color:#4FC3F7; }
+.nav-item .icon { font-size:16px; width:22px; text-align:center; }
+
+.nav-section {
+  padding:12px 24px 6px;
+  font-size:10px; font-weight:700;
+  color:rgba(255,255,255,0.3);
+  letter-spacing:2px; text-transform:uppercase;
+}
+
+.cat-badge {
+  display:inline-block;
+  padding:2px 8px; border-radius:10px;
+  font-size:10px; font-weight:700;
+  margin-left:auto;
+}
+
+.main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+
+.topbar {
+  background:var(--white);
+  padding:16px 32px;
+  border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between;
+}
+.topbar h2 {
+  font-family:'Gmarket Sans',sans-serif;
+  font-size:18px; font-weight:700;
+}
+.btn-primary {
+  background:var(--primary);
+  color:#fff;
+  border:none;
+  padding:10px 20px;
+  border-radius:8px;
+  font-family:'Noto Sans KR',sans-serif;
+  font-size:13px; font-weight:500;
+  cursor:pointer;
+  transition:all 0.2s;
+  display:flex; align-items:center; gap:6px;
+}
+.btn-primary:hover { background:var(--primary-light); transform:translateY(-1px); }
+.btn-export {
+  background:#1E8449;
+  color:#fff; border:none;
+  padding:10px 20px; border-radius:8px;
+  font-family:'Noto Sans KR',sans-serif;
+  font-size:13px; font-weight:500;
+  cursor:pointer; transition:all 0.2s;
+  display:flex; align-items:center; gap:6px;
+}
+.btn-export:hover { background:#196F3D; }
+
+.content { flex:1; padding:28px 32px; overflow-y:auto; }
+
+/* ── Stats ── */
+.stats { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:28px; }
+.stat-card {
+  background:var(--white);
+  border-radius:12px;
+  padding:20px;
+  border:1px solid var(--border);
+}
+.stat-label { font-size:12px; color:var(--muted); margin-bottom:8px; }
+.stat-value { font-family:'Gmarket Sans',sans-serif; font-size:22px; font-weight:700; }
+.stat-sub { font-size:11px; color:var(--muted); margin-top:4px; }
+
+/* ── Category cards ── */
+.cat-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; margin-bottom:28px; }
+.cat-card {
+  background:var(--white);
+  border-radius:12px;
+  padding:20px;
+  border:1px solid var(--border);
+  border-top:4px solid;
+  cursor:pointer; transition:all 0.2s;
+}
+.cat-card:hover { transform:translateY(-2px); box-shadow:0 4px 16px rgba(0,0,0,0.08); }
+.cat-card.cat1 { border-top-color:var(--cat1-fg); }
+.cat-card.cat2 { border-top-color:var(--cat2-fg); }
+.cat-card.cat3 { border-top-color:var(--cat3-fg); }
+.cat-card.cat4 { border-top-color:var(--cat4-fg); }
+.cat-card-name { font-weight:700; font-size:15px; margin-bottom:4px; }
+.cat-card-amount { font-family:'Gmarket Sans',sans-serif; font-size:20px; font-weight:700; margin-bottom:8px; }
+.cat-card-subs { display:flex; flex-wrap:wrap; gap:4px; }
+.sub-chip {
+  padding:2px 8px; border-radius:20px;
+  font-size:10px; font-weight:500;
+}
+
+/* ── Table ── */
+.table-wrap {
+  background:var(--white);
+  border-radius:12px;
+  border:1px solid var(--border);
+  overflow:hidden;
+}
+.table-header {
+  padding:16px 20px;
+  border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between;
+}
+.table-title { font-weight:700; font-size:14px; }
+.filter-row { display:flex; gap:8px; }
+.filter-select {
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:6px 12px;
+  font-family:'Noto Sans KR',sans-serif;
+  font-size:12px;
+  background:var(--white);
+  cursor:pointer; outline:none;
+}
+table { width:100%; border-collapse:collapse; }
+th {
+  background:#F8F9FC;
+  padding:10px 14px;
+  text-align:left;
+  font-size:12px; font-weight:700;
+  color:var(--muted);
+  border-bottom:1px solid var(--border);
+  white-space:nowrap;
+}
+td {
+  padding:11px 14px;
+  font-size:13px;
+  border-bottom:1px solid #F0F3F8;
+  vertical-align:middle;
+}
+tr:last-child td { border-bottom:none; }
+tr:hover td { background:#FAFBFF; }
+.amount-cell { font-family:'Gmarket Sans',sans-serif; font-weight:500; text-align:right; }
+.cat-pill {
+  display:inline-block;
+  padding:3px 10px; border-radius:20px;
+  font-size:11px; font-weight:700;
+  white-space:nowrap;
+}
+.btn-del {
+  background:none; border:none;
+  color:var(--muted); cursor:pointer;
+  font-size:16px; padding:2px 6px;
+  border-radius:4px; transition:all 0.2s;
+}
+.btn-del:hover { color:var(--accent); background:#FFF0EE; }
+.empty-row td { text-align:center; padding:40px; color:var(--muted); font-size:13px; }
+
+/* ── Modal ── */
+.modal-overlay {
+  position:fixed; inset:0;
+  background:rgba(0,0,0,0.45);
+  display:flex; align-items:center; justify-content:center;
+  z-index:1000;
+  opacity:0; pointer-events:none;
+  transition:opacity 0.25s;
+}
+.modal-overlay.show { opacity:1; pointer-events:all; }
+.modal {
+  background:var(--white);
+  border-radius:16px;
+  width:580px; max-width:95vw;
+  max-height:90vh;
+  overflow-y:auto;
+  transform:translateY(20px);
+  transition:transform 0.25s;
+  padding:0;
+}
+.modal-overlay.show .modal { transform:translateY(0); }
+.modal-head {
+  padding:24px 28px 16px;
+  border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between;
+}
+.modal-head h3 { font-family:'Gmarket Sans',sans-serif; font-size:16px; font-weight:700; }
+.modal-close {
+  background:none; border:none;
+  font-size:22px; color:var(--muted);
+  cursor:pointer; line-height:1;
+}
+.modal-body { padding:24px 28px; }
+.form-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.form-group { display:flex; flex-direction:column; gap:6px; }
+.form-group.full { grid-column:1/-1; }
+label { font-size:12px; font-weight:700; color:var(--muted); }
+input, select, textarea {
+  border:1.5px solid var(--border);
+  border-radius:8px;
+  padding:10px 12px;
+  font-family:'Noto Sans KR',sans-serif;
+  font-size:13px;
+  outline:none;
+  transition:border-color 0.2s;
+  background:var(--white);
+  color:var(--text);
+}
+input:focus, select:focus, textarea:focus { border-color:var(--primary); }
+textarea { resize:vertical; min-height:64px; }
+
+/* ── Upload zone ── */
+.upload-zone {
+  border:2px dashed var(--border);
+  border-radius:10px;
+  padding:24px;
+  text-align:center;
+  cursor:pointer;
+  transition:all 0.2s;
+}
+.upload-zone:hover { border-color:var(--primary); background:#F8FAFF; }
+.upload-zone input { display:none; }
+.upload-zone .u-icon { font-size:28px; margin-bottom:8px; }
+.upload-zone .u-text { font-size:12px; color:var(--muted); }
+.upload-zone .u-text strong { color:var(--primary); }
+.upload-preview { margin-top:12px; display:none; }
+.upload-preview img { max-width:100%; max-height:180px; border-radius:8px; object-fit:contain; }
+.upload-name { font-size:12px; color:var(--primary); margin-top:6px; font-weight:500; }
+
+/* ── Calendar popup ── */
+.calendar-wrap { position:relative; }
+.calendar-popup {
+  position:absolute; top:100%; left:0; z-index:200;
+  background:var(--white);
+  border:1px solid var(--border);
+  border-radius:12px;
+  box-shadow:0 8px 32px rgba(0,0,0,0.12);
+  padding:16px;
+  width:280px;
+  display:none;
+}
+.calendar-popup.show { display:block; }
+.cal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.cal-title { font-weight:700; font-size:14px; }
+.cal-nav { background:none; border:none; font-size:18px; cursor:pointer; color:var(--muted); padding:2px 6px; border-radius:4px; }
+.cal-nav:hover { background:var(--bg); }
+.cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
+.cal-day-name { text-align:center; font-size:10px; font-weight:700; color:var(--muted); padding:4px 0; }
+.cal-day {
+  text-align:center; padding:6px 4px;
+  border-radius:6px; cursor:pointer;
+  font-size:12px; transition:all 0.15s;
+}
+.cal-day:hover { background:var(--primary); color:#fff; }
+.cal-day.today { font-weight:700; color:var(--primary); }
+.cal-day.selected { background:var(--primary); color:#fff; }
+.cal-day.other-month { color:var(--border); }
+.cal-day.empty { cursor:default; }
+
+.modal-foot {
+  padding:16px 28px 24px;
+  display:flex; gap:10px; justify-content:flex-end;
+}
+.btn-cancel {
+  background:none; border:1px solid var(--border);
+  border-radius:8px; padding:10px 20px;
+  font-family:'Noto Sans KR',sans-serif; font-size:13px;
+  cursor:pointer; color:var(--muted); transition:all 0.2s;
+}
+.btn-cancel:hover { border-color:var(--text); color:var(--text); }
+.btn-save {
+  background:var(--primary); color:#fff;
+  border:none; border-radius:8px;
+  padding:10px 24px;
+  font-family:'Noto Sans KR',sans-serif; font-size:13px; font-weight:700;
+  cursor:pointer; transition:all 0.2s;
+}
+.btn-save:hover { background:var(--primary-light); }
+
+/* ── Receipt viewer ── */
+.receipt-thumb {
+  width:36px; height:36px; border-radius:6px;
+  object-fit:cover; cursor:pointer;
+  border:1px solid var(--border);
+  transition:transform 0.15s;
+}
+.receipt-thumb:hover { transform:scale(1.1); }
+.img-modal-overlay {
+  position:fixed; inset:0;
+  background:rgba(0,0,0,0.8);
+  display:flex; align-items:center; justify-content:center;
+  z-index:2000;
+  display:none;
+}
+.img-modal-overlay.show { display:flex; }
+.img-modal-overlay img { max-width:90vw; max-height:90vh; border-radius:12px; }
+.img-close {
+  position:absolute; top:20px; right:20px;
+  background:rgba(255,255,255,0.2);
+  border:none; color:#fff; font-size:24px;
+  border-radius:50%; width:40px; height:40px;
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="title">✨ 두나미스</div>
+      <div class="sub">청년부 재정 관리 시스템</div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section">메뉴</div>
+      <div class="nav-item active" onclick="showView('dashboard')">
+        <span class="icon">📊</span> 대시보드
+      </div>
+      <div class="nav-item" onclick="showView('all')">
+        <span class="icon">📋</span> 전체 지출 내역
+      </div>
+      <div class="nav-section">카테고리</div>
+      <div class="nav-item" onclick="showView('cat','01.목회')">
+        <span class="icon">⛪</span> 01. 목회
+        <span class="cat-badge" style="background:#D6E4F0;color:#1A5276" id="badge-목회">0</span>
+      </div>
+      <div class="nav-item" onclick="showView('cat','02.양육')">
+        <span class="icon">📚</span> 02. 양육
+        <span class="cat-badge" style="background:#D5F5E3;color:#1E8449" id="badge-양육">0</span>
+      </div>
+      <div class="nav-item" onclick="showView('cat','03.사역')">
+        <span class="icon">🙌</span> 03. 사역
+        <span class="cat-badge" style="background:#FEF9E7;color:#9A7D0A" id="badge-사역">0</span>
+      </div>
+      <div class="nav-item" onclick="showView('cat','04.행사')">
+        <span class="icon">🎉</span> 04. 행사
+        <span class="cat-badge" style="background:#FDEDEC;color:#922B21" id="badge-행사">0</span>
+      </div>
+    </nav>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <h2 id="page-title">대시보드</h2>
+      <div style="display:flex;gap:10px">
+        <button class="btn-export" onclick="exportExcel()">📥 엑셀 다운로드</button>
+        <button class="btn-primary" onclick="openModal()">+ 지출 등록</button>
+      </div>
+    </div>
+
+    <div class="content" id="content">
+      <!-- dynamically rendered -->
+    </div>
+  </div>
+</div>
+
+<!-- Add Expense Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>💳 지출 등록</h3>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <!-- 결제일 -->
+        <div class="form-group">
+          <label>📅 결제일 *</label>
+          <div class="calendar-wrap">
+            <input type="text" id="f-date" placeholder="날짜 선택" readonly
+                   style="cursor:pointer" onclick="toggleCal()">
+            <div class="calendar-popup" id="calPopup"></div>
+          </div>
+        </div>
+        <!-- 결제자 -->
+        <div class="form-group">
+          <label>👤 결제자 *</label>
+          <input type="text" id="f-payer" placeholder="이름 입력">
+        </div>
+        <!-- 대카테고리 -->
+        <div class="form-group">
+          <label>📂 대카테고리 *</label>
+          <select id="f-cat" onchange="updateSubCat()">
+            <option value="">선택하세요</option>
+            <option>01.목회</option>
+            <option>02.양육</option>
+            <option>03.사역</option>
+            <option>04.행사</option>
+          </select>
+        </div>
+        <!-- 소카테고리 -->
+        <div class="form-group">
+          <label>📁 소카테고리 *</label>
+          <select id="f-subcat">
+            <option value="">대카테고리 먼저 선택</option>
+          </select>
+        </div>
+        <!-- 결제금액 -->
+        <div class="form-group">
+          <label>💰 결제금액 *</label>
+          <input type="number" id="f-amount" placeholder="0" min="0">
+        </div>
+        <!-- 가맹점 -->
+        <div class="form-group">
+          <label>🏪 가맹점</label>
+          <input type="text" id="f-store" placeholder="가맹점명">
+        </div>
+        <!-- 적요 -->
+        <div class="form-group full">
+          <label>📝 적요 (누구와 함께 사용했는지)</label>
+          <textarea id="f-memo" placeholder="예) 리더모임 다과비 (리더 8명 참석)"></textarea>
+        </div>
+        <!-- 영수증 -->
+        <div class="form-group full">
+          <label>🧾 영수증 첨부</label>
+          <div class="upload-zone" id="uploadZone" onclick="document.getElementById('f-file').click()">
+            <input type="file" id="f-file" accept="image/*" onchange="handleUpload(event)">
+            <div class="u-icon">📎</div>
+            <div class="u-text"><strong>클릭</strong>하거나 드래그해서 영수증 첨부</div>
+          </div>
+          <div class="upload-preview" id="uploadPreview">
+            <img id="previewImg" src="" alt="">
+            <div class="upload-name" id="uploadName"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-cancel" onclick="closeModal()">취소</button>
+      <button class="btn-save" onclick="saveExpense()">저장하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- Image viewer -->
+<div class="img-modal-overlay" id="imgViewer" onclick="this.classList.remove('show')">
+  <button class="img-close">×</button>
+  <img id="viewerImg" src="" alt="">
+</div>
+
+<script>
+// ── Data ──
+const CATEGORIES = {
+  "01.목회": ["행정물품비","심방비","목회지원비","예배준비비"],
+  "02.양육": ["리더장지원비","리더모임","소그룹운영비","전체리더십캠프","임원단활동비","임원단캠프","교육훈련비","생일등반","고3사역","새가족팀"],
+  "03.사역": ["사역국장지원비","금요예배지원비","평신도사역자 지원비"],
+  "04.행사": ["특별예배","전도프로그램","신입생 환영캠프","국내단기선교","임명식/수료식","연합행사","크리스마스","봉사활동","강사초청"],
+};
+
+const CAT_STYLE = {
+  "01.목회": { bg:"#D6E4F0", fg:"#1A5276", cls:"cat1", icon:"⛪" },
+  "02.양육": { bg:"#D5F5E3", fg:"#1E8449", cls:"cat2", icon:"📚" },
+  "03.사역": { bg:"#FEF9E7", fg:"#9A7D0A", cls:"cat3", icon:"🙌" },
+  "04.행사": { bg:"#FDEDEC", fg:"#922B21", cls:"cat4", icon:"🎉" },
+};
+
+// Sample data
+let expenses = [
+  { id:1, date:"2025-03-05", payer:"김목사",  amount:45000,  store:"문구사랑",  cat:"01.목회", subcat:"행정물품비",      memo:"사무용품 구입 (집사 3명 동행)",         img:null },
+  { id:2, date:"2025-03-08", payer:"이전도사", amount:50000,  store:"성심당",    cat:"02.양육", subcat:"리더모임",        memo:"3월 리더모임 다과비 (리더 8명)",       img:null },
+  { id:3, date:"2025-03-10", payer:"박집사",   amount:60000,  store:"GS25편의점",cat:"02.양육", subcat:"소그룹운영비",    memo:"소그룹 간식비 (청년부 소그룹 12명)",   img:null },
+  { id:4, date:"2025-03-12", payer:"최전도사", amount:155000, store:"롯데마트",  cat:"04.행사", subcat:"신입생 환영캠프", memo:"환영캠프 준비물 (스태프 5명)",          img:null },
+  { id:5, date:"2025-03-15", payer:"김목사",   amount:40500,  store:"카페모카",  cat:"01.목회", subcat:"심방비",          memo:"심방 후 다과 (심방대상자 가족 5명)",   img:null },
+];
+let nextId = 6;
+
+let currentView = 'dashboard';
+let currentCat  = null;
+let calYear, calMonth;
+
+// ── Calendar ──
+function initCal() {
+  const now = new Date();
+  calYear  = now.getFullYear();
+  calMonth = now.getMonth();
+}
+initCal();
+
+function toggleCal() {
+  const pop = document.getElementById('calPopup');
+  pop.classList.toggle('show');
+  if (pop.classList.contains('show')) renderCal();
+}
+
+function renderCal() {
+  const pop = document.getElementById('calPopup');
+  const days = ['일','월','화','수','목','금','토'];
+  const months = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  const today = new Date();
+  const first = new Date(calYear, calMonth, 1);
+  const lastDay = new Date(calYear, calMonth+1, 0).getDate();
+  const startWd = first.getDay();
+  const selVal = document.getElementById('f-date').value;
+
+  let html = `<div class="cal-header">
+    <button class="cal-nav" onclick="changeMonth(-1)">‹</button>
+    <span class="cal-title">${calYear}년 ${months[calMonth]}</span>
+    <button class="cal-nav" onclick="changeMonth(1)">›</button>
+  </div><div class="cal-grid">`;
+  days.forEach(d => html += `<div class="cal-day-name">${d}</div>`);
+  for (let i=0; i<startWd; i++) html += `<div class="cal-day empty"></div>`;
+  for (let d=1; d<=lastDay; d++) {
+    const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday = d===today.getDate() && calMonth===today.getMonth() && calYear===today.getFullYear();
+    const isSel   = dateStr===selVal;
+    html += `<div class="cal-day ${isToday?'today':''} ${isSel?'selected':''}"
+              onclick="selectDate('${dateStr}')">${d}</div>`;
+  }
+  html += `</div>`;
+  pop.innerHTML = html;
+}
+
+function changeMonth(dir) {
+  calMonth += dir;
+  if (calMonth < 0) { calMonth=11; calYear--; }
+  if (calMonth > 11) { calMonth=0; calYear++; }
+  renderCal();
+}
+
+function selectDate(dateStr) {
+  document.getElementById('f-date').value = dateStr;
+  document.getElementById('calPopup').classList.remove('show');
+}
+
+document.addEventListener('click', e => {
+  const wrap = document.querySelector('.calendar-wrap');
+  if (wrap && !wrap.contains(e.target))
+    document.getElementById('calPopup').classList.remove('show');
+});
+
+// ── Sub-category ──
+function updateSubCat() {
+  const cat = document.getElementById('f-cat').value;
+  const sel = document.getElementById('f-subcat');
+  sel.innerHTML = cat
+    ? CATEGORIES[cat].map(s=>`<option>${s}</option>`).join('')
+    : '<option value="">대카테고리 먼저 선택</option>';
+}
+
+// ── Upload ──
+let uploadedFile = null;
+function handleUpload(e) {
+  const file = e.target.files[0]; if (!file) return;
+  uploadedFile = file;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    document.getElementById('previewImg').src = ev.target.result;
+    document.getElementById('uploadPreview').style.display='block';
+    document.getElementById('uploadName').textContent = file.name;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── Modal ──
+function openModal() {
+  document.getElementById('modal').classList.add('show');
+  document.getElementById('f-date').value='';
+  document.getElementById('f-payer').value='';
+  document.getElementById('f-cat').value='';
+  document.getElementById('f-subcat').innerHTML='<option value="">대카테고리 먼저 선택</option>';
+  document.getElementById('f-amount').value='';
+  document.getElementById('f-store').value='';
+  document.getElementById('f-memo').value='';
+  document.getElementById('uploadPreview').style.display='none';
+  document.getElementById('f-file').value='';
+  uploadedFile = null;
+  initCal();
+}
+function closeModal() {
+  document.getElementById('modal').classList.remove('show');
+}
+
+function saveExpense() {
+  const date   = document.getElementById('f-date').value;
+  const payer  = document.getElementById('f-payer').value.trim();
+  const cat    = document.getElementById('f-cat').value;
+  const subcat = document.getElementById('f-subcat').value;
+  const amount = parseInt(document.getElementById('f-amount').value);
+  if (!date||!payer||!cat||!subcat||!amount) return alert('필수 항목을 모두 입력해주세요!');
+
+  let imgData = null;
+  if (uploadedFile) {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      expenses.push({ id:nextId++, date, payer, amount,
+        store: document.getElementById('f-store').value.trim()||'-',
+        cat, subcat,
+        memo: document.getElementById('f-memo').value.trim(),
+        img: ev.target.result });
+      closeModal(); render(); updateBadges();
+    };
+    reader.readAsDataURL(uploadedFile);
+    return;
+  }
+  expenses.push({ id:nextId++, date, payer, amount,
+    store: document.getElementById('f-store').value.trim()||'-',
+    cat, subcat,
+    memo: document.getElementById('f-memo').value.trim(), img:null });
+  closeModal(); render(); updateBadges();
+}
+
+function deleteExpense(id) {
+  if (!confirm('삭제하시겠습니까?')) return;
+  expenses = expenses.filter(e=>e.id!==id);
+  render(); updateBadges();
+}
+
+// ── Views ──
+function showView(view, cat=null) {
+  currentView = view; currentCat = cat;
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const titles = { dashboard:'대시보드', all:'전체 지출 내역' };
+  const titles2 = { '01.목회':'01. 목회', '02.양육':'02. 양육', '03.사역':'03. 사역', '04.행사':'04. 행사' };
+  document.getElementById('page-title').textContent =
+    cat ? titles2[cat] : (titles[view]||view);
+  render();
+}
+
+function render() {
+  updateBadges();
+  if (currentView==='dashboard') renderDashboard();
+  else renderTable(currentCat);
+}
+
+function updateBadges() {
+  ['목회','양육','사역','행사'].forEach(name => {
+    const full = Object.keys(CAT_STYLE).find(k=>k.includes(name));
+    const cnt = expenses.filter(e=>e.cat===full).length;
+    document.getElementById(`badge-${name}`).textContent = cnt;
+  });
+}
+
+function renderDashboard() {
+  const total = expenses.reduce((s,e)=>s+e.amount,0);
+  const catTotals = {};
+  Object.keys(CATEGORIES).forEach(c=>catTotals[c]=0);
+  expenses.forEach(e=>{ catTotals[e.cat]=(catTotals[e.cat]||0)+e.amount; });
+
+  let html = `<div class="stats">
+    <div class="stat-card">
+      <div class="stat-label">💰 총 지출</div>
+      <div class="stat-value">${total.toLocaleString()}원</div>
+      <div class="stat-sub">총 ${expenses.length}건</div>
+    </div>`;
+  Object.entries(catTotals).forEach(([cat,amt])=>{
+    const s = CAT_STYLE[cat];
+    html += `<div class="stat-card" style="border-top:3px solid ${s.fg}">
+      <div class="stat-label">${s.icon} ${cat}</div>
+      <div class="stat-value" style="color:${s.fg}">${amt.toLocaleString()}원</div>
+      <div class="stat-sub">${expenses.filter(e=>e.cat===cat).length}건</div>
+    </div>`;
+  });
+  html += `</div>`;
+
+  // category cards
+  html += `<div class="cat-grid">`;
+  Object.entries(CATEGORIES).forEach(([cat, subs]) => {
+    const s = CAT_STYLE[cat];
+    const amt = catTotals[cat]||0;
+    const usedSubs = [...new Set(expenses.filter(e=>e.cat===cat).map(e=>e.subcat))];
+    html += `<div class="cat-card ${s.cls}" onclick="showView('cat','${cat}')">
+      <div class="cat-card-name">${s.icon} ${cat}</div>
+      <div class="cat-card-amount" style="color:${s.fg}">${amt.toLocaleString()}원</div>
+      <div class="cat-card-subs">
+        ${subs.map(sub=>{
+          const active = usedSubs.includes(sub);
+          return `<span class="sub-chip" style="background:${active?s.bg:'#F0F0F0'};color:${active?s.fg:'#aaa'}">${sub}</span>`;
+        }).join('')}
+      </div>
+    </div>`;
+  });
+  html += `</div>`;
+
+  // recent table
+  const recent = [...expenses].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5);
+  html += buildTable('최근 지출 5건', recent);
+
+  document.getElementById('content').innerHTML = html;
+}
+
+function renderTable(cat=null) {
+  const filtered = cat ? expenses.filter(e=>e.cat===cat) : expenses;
+  const sorted = [...filtered].sort((a,b)=>b.date.localeCompare(a.date));
+  document.getElementById('content').innerHTML = buildTable(
+    cat ? `${CAT_STYLE[cat].icon} ${cat} 지출 내역` : '전체 지출 내역',
+    sorted, true
+  );
+}
+
+function buildTable(title, rows, showFilter=false) {
+  const total = rows.reduce((s,r)=>s+r.amount,0);
+  let html = `<div class="table-wrap">
+    <div class="table-header">
+      <span class="table-title">${title} <span style="font-size:12px;color:var(--muted);font-weight:400">(${rows.length}건 / ${total.toLocaleString()}원)</span></span>
+    </div>
+    <table><thead><tr>
+      <th>결제일</th><th>결제자</th><th>대카테고리</th><th>소카테고리</th>
+      <th style="text-align:right">결제금액</th><th>가맹점</th><th>적요</th><th>영수증</th><th></th>
+    </tr></thead><tbody>`;
+
+  if (rows.length === 0) {
+    html += `<tr class="empty-row"><td colspan="9">📭 등록된 지출이 없어요. + 지출 등록 버튼을 눌러 추가하세요!</td></tr>`;
+  } else {
+    rows.forEach(r => {
+      const s = CAT_STYLE[r.cat]||{bg:'#eee',fg:'#666'};
+      html += `<tr>
+        <td>${r.date}</td>
+        <td>${r.payer}</td>
+        <td><span class="cat-pill" style="background:${s.bg};color:${s.fg}">${r.cat}</span></td>
+        <td>${r.subcat}</td>
+        <td class="amount-cell">${r.amount.toLocaleString()}원</td>
+        <td>${r.store}</td>
+        <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${r.memo}">${r.memo||'-'}</td>
+        <td>${r.img ? `<img class="receipt-thumb" src="${r.img}" onclick="viewImg('${r.img}')">` : '<span style="font-size:11px;color:#ccc">없음</span>'}</td>
+        <td><button class="btn-del" onclick="deleteExpense(${r.id})">🗑</button></td>
+      </tr>`;
+    });
+  }
+  html += `</tbody></table></div>`;
+  return html;
+}
+
+function viewImg(src) {
+  document.getElementById('viewerImg').src = src;
+  document.getElementById('imgViewer').classList.add('show');
+}
+
+// ── Excel export ──
+function exportExcel() {
+  const wb = XLSX.utils.book_new();
+
+  // Sheet 1: 전체
+  const headers = ["결제일","결제자","결제금액","가맹점","대카테고리","소카테고리","적요"];
+  const rows = expenses.map(e=>[e.date,e.payer,e.amount,e.store,e.cat,e.subcat,e.memo]);
+  const ws1 = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  ws1['!cols'] = [14,12,14,16,14,18,40].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, ws1, "전체지출내역");
+
+  // Sheet 2: 카테고리별 요약
+  const sumRows = [["대카테고리","소카테고리","건수","합계금액"]];
+  Object.entries(CATEGORIES).forEach(([cat, subs]) => {
+    subs.forEach(sub => {
+      const matched = expenses.filter(e=>e.cat===cat&&e.subcat===sub);
+      sumRows.push([cat, sub, matched.length, matched.reduce((s,e)=>s+e.amount,0)]);
+    });
+    const catTotal = expenses.filter(e=>e.cat===cat);
+    sumRows.push([`${cat} 소계`,"",catTotal.length, catTotal.reduce((s,e)=>s+e.amount,0)]);
+    sumRows.push([]);
+  });
+  const ws2 = XLSX.utils.aoa_to_sheet(sumRows);
+  ws2['!cols'] = [16,22,10,16].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, ws2, "카테고리별요약");
+
+  // Sheet 3~6: 각 카테고리
+  Object.entries(CATEGORIES).forEach(([cat, subs]) => {
+    const catRows = expenses.filter(e=>e.cat===cat)
+      .sort((a,b)=>a.date.localeCompare(b.date));
+    const catData = [["결제일","결제자","소카테고리","결제금액","가맹점","적요"],
+      ...catRows.map(e=>[e.date,e.payer,e.subcat,e.amount,e.store,e.memo])];
+    const ws = XLSX.utils.aoa_to_sheet(catData);
+    ws['!cols'] = [13,12,18,14,16,40].map(w=>({wch:w}));
+    XLSX.utils.book_append_sheet(wb, ws, cat);
+  });
+
+  const now = new Date();
+  const fname = `경비관리대장_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.xlsx`;
+  XLSX.writeFile(wb, fname);
+}
+
+// ── Init ──
+render();
+</script>
+</body>
+</html>
