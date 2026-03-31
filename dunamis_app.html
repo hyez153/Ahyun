@@ -8,6 +8,44 @@
 <title>두나미스</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Gmarket+Sans:wght@500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- Firebase -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAafW9AhyxQFobApD9vKQARJ4lKmg7d8kI",
+  authDomain: "dunamis-153.firebaseapp.com",
+  projectId: "dunamis-153",
+  storageBucket: "dunamis-153.firebasestorage.app",
+  messagingSenderId: "884867380831",
+  appId: "1:884867380831:web:d3323eb4ecc397324e8dea",
+  measurementId: "G-6066SRZY9Y"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const colRef = collection(db, "expenses");
+
+// 실시간 동기화
+onSnapshot(query(colRef, orderBy("date", "desc")), (snapshot) => {
+  expenses = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+  render();
+  updateLoadingState(false);
+});
+
+// 저장
+window.saveToFirebase = async (data) => {
+  await addDoc(colRef, data);
+};
+
+// 삭제
+window.deleteFromFirebase = async (id) => {
+  await deleteDoc(doc(db, "expenses", id));
+};
+
+window.firebaseReady = true;
+</script>
 <style>
 :root {
   --primary: #1F3864;
@@ -429,9 +467,16 @@ textarea { resize:none; height:72px; }
   flex-shrink:0;
 }
 .del-btn:active { color:#E74C3C; }
+@keyframes spin { to { transform:rotate(360deg); } }
 </style>
 </head>
 <body>
+
+<!-- Loading banner -->
+<div id="loadingBanner" style="display:flex;align-items:center;justify-content:center;gap:8px;background:#1F3864;color:rgba(255,255,255,0.8);font-size:12px;padding:8px;flex-shrink:0;">
+  <div style="width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.8s linear infinite"></div>
+  데이터 불러오는 중...
+</div>
 
 <!-- Header -->
 <div class="app-header">
@@ -601,14 +646,8 @@ const CS = {
   "04.행사": {bg:"#FDEDEC",fg:"#922B21",icon:"🎉",hbg:"#922B21"},
 };
 
-let expenses = [
-  {id:1,date:"2025-03-05",payer:"김목사", amount:45000, store:"문구사랑",  cat:"01.목회",subcat:"행정물품비",     memo:"사무용품 구입 (집사 3명 동행)",img:null},
-  {id:2,date:"2025-03-08",payer:"이전도사",amount:50000, store:"성심당",    cat:"02.양육",subcat:"리더모임",       memo:"3월 리더모임 다과비 (리더 8명)",img:null},
-  {id:3,date:"2025-03-10",payer:"박집사",  amount:60000, store:"GS25편의점",cat:"02.양육",subcat:"소그룹운영비",   memo:"소그룹 간식비 (청년부 12명)",  img:null},
-  {id:4,date:"2025-03-12",payer:"최전도사",amount:155000,store:"롯데마트",  cat:"04.행사",subcat:"신입생 환영캠프",memo:"환영캠프 준비물 (스태프 5명)",  img:null},
-  {id:5,date:"2025-03-15",payer:"김목사",  amount:40500, store:"카페모카",  cat:"01.목회",subcat:"심방비",         memo:"심방 후 다과 (가족 5명)",      img:null},
-];
-let nextId = 6;
+let expenses = [];
+let nextId = 1;
 let curTab = 'home';
 let curCat = null;
 let curSubcat = null;
@@ -695,7 +734,7 @@ function handleOverlayClick(e){
   if(e.target===document.getElementById('sheetOverlay')) closeSheet();
 }
 
-function saveExpense(){
+async function saveExpense(){
   const date=document.getElementById('f-date').value;
   const payer=document.getElementById('f-payer').value.trim();
   const cat=document.getElementById('f-cat').value;
@@ -704,23 +743,46 @@ function saveExpense(){
   if(!date||!payer||!cat||!sub||!amt) return alert('필수 항목을 모두 입력해주세요!');
   const store=document.getElementById('f-store').value.trim()||'-';
   const memo=document.getElementById('f-memo').value.trim();
+
+  const saveBtn = document.querySelector('.btn-save');
+  saveBtn.textContent = '저장 중...';
+  saveBtn.disabled = true;
+
+  const doSave = async (imgData) => {
+    const data = {date,payer,amount:amt,store,cat,subcat:sub,memo,img:imgData||null,createdAt:new Date().toISOString()};
+    try {
+      await window.saveToFirebase(data);
+      closeSheet();
+    } catch(e) {
+      alert('저장 실패: ' + e.message);
+    } finally {
+      saveBtn.textContent = '저장하기';
+      saveBtn.disabled = false;
+    }
+  };
+
   if(uploadFile){
     const r=new FileReader();
-    r.onload=ev=>{
-      expenses.push({id:nextId++,date,payer,amount:amt,store,cat,subcat:sub,memo,img:ev.target.result});
-      closeSheet(); render();
-    };
+    r.onload=ev=>doSave(ev.target.result);
     r.readAsDataURL(uploadFile);
   } else {
-    expenses.push({id:nextId++,date,payer,amount:amt,store,cat,subcat:sub,memo,img:null});
-    closeSheet(); render();
+    await doSave(null);
   }
 }
 
-function delExp(id){
+async function delExp(id){
   if(!confirm('삭제하시겠습니까?')) return;
-  expenses=expenses.filter(e=>e.id!==id);
-  render();
+  try {
+    await window.deleteFromFirebase(id);
+  } catch(e) {
+    alert('삭제 실패: ' + e.message);
+  }
+}
+
+// ── Loading ──
+function updateLoadingState(isLoading){
+  const el = document.getElementById('loadingBanner');
+  if(el) el.style.display = isLoading ? 'flex' : 'none';
 }
 
 // ── Tabs ──
