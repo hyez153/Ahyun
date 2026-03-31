@@ -1,36 +1,43 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>테스트</title>
+  <meta charset="UTF-8">
+  <title>Dunamis App</title>
 </head>
 <body>
 
+  <h2>데이터 저장 테스트</h2>
+
   <button onclick="saveData()">저장</button>
 
+  <!-- 🔥 여기부터 Firebase 코드 -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
     const firebaseConfig = {
-      apiKey: "AIzaSy...",
+      apiKey: "AIzaSyAafW9AhyxQFobApD9vKQARJ4lKmg7d8kI",
       authDomain: "dunamis-153.firebaseapp.com",
       projectId: "dunamis-153",
       storageBucket: "dunamis-153.firebasestorage.app",
       messagingSenderId: "884867380831",
-      appId: "1:884867380831:web:d3323eb4ecc397324e8dea"
+      appId: "1:884867380831:web:d3323eb4ecc397324e8dea",
+      measurementId: "G-6066SRZY9Y"
     };
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
+    // 버튼 클릭 시 실행되는 함수
     window.saveData = function () {
       set(ref(db, 'test'), {
         name: "혜지",
         time: new Date().toString()
       });
-      console.log("저장됨");
+      console.log("저장 완료");
     };
   </script>
+  <!-- 🔥 여기까지 -->
 
 </body>
 </html>
